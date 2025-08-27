@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+
 '''FSM, или конечный автомат состояний (Finite State Machine), 
 — это простой способ управлять сложными взаимодействиями в вашем 
 Telegram боте. Он помогает боту "запомнить", 
@@ -216,23 +217,31 @@ async def send_advertisement(message: Message):
         await message.answer("У вас нет прав для этой команды.")
         return
     
-    photo_path = "ad.png"  
-    ad_text = "🔥 Специальное предложение от Nicole! Не пропустите наши новинки! 🔥"
+    photo_path = 'https://i.pinimg.com/originals/84/07/85/840785b9d92b8465aa511f0f8edd7e02.jpg'  
+    ad_text = "🔥 Не пропустите наши новинки! 🔥"
+
     session = Session()
-    user_ids = set(row[0] for row in session.query(SupportMessage.user_id).distinct().all())
+
+    survey_users = [row[0] for row in session.query(Survey.user_id).distinct().all()]
+    support_users = [row[0] for row in session.query(SupportMessage.user_id).distinct().all()]
+    user_ids = set(survey_users + support_users)
     session.close()
+
     if not user_ids:
         await message.answer("Нет пользователей для рассылки.")
         return
+
     sent = 0
     for uid in user_ids:
         try:
-            with open(photo_path, "rb") as photo:
-                await bot.send_photo(uid, photo, caption=ad_text)
+            await bot.send_photo(uid, photo_path, caption=ad_text)
             sent += 1
-        except Exception:
+        except Exception as e:
+            print(f"Не удалось отправить пользователю {uid}: {e}")
             continue
+
     await message.answer(f"Реклама отправлена {sent} пользователям.")
+
 
 @router.message(Command(commands=['clear_inbox']))
 async def clear_inbox(message: Message):
